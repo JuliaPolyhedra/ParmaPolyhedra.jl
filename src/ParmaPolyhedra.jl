@@ -1,5 +1,5 @@
 module ParmaPolyhedra
 
-greet() = print("Hello World!")
+include("gen/ppl.jl")
 
 end # module ParmaPolyhedra

@@ -1,0 +1,5 @@
+[general]
+library_name = "ppl"
+output_file_path = "../src/gen/ppl.jl"
+module_name = "PPL"
+jll_pkg_name = "PPL_jll"
