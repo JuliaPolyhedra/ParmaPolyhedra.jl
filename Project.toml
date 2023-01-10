@@ -1,0 +1,4 @@
+name = "ParmaPolyhedra"
+uuid = "c52f9019-f606-409c-9f36-a954b424c0b9"
+authors = ["Benoît Legat <benoit.legat@gmail.com>"]
+version = "0.1.0"
