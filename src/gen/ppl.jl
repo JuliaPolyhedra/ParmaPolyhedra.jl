@@ -261,7 +261,7 @@ function ppl_new_Coefficient(pc)
 end
 
 function ppl_new_Coefficient_from_mpz_t(pc, z)
-    ccall((:ppl_new_Coefficient_from_mpz_t, libppl_c), Cint, (Ptr{ppl_Coefficient_t}, Cint), pc, z)
+    ccall((:ppl_new_Coefficient_from_mpz_t, libppl_c), Cint, (Ptr{ppl_Coefficient_t}, Base.GMP.MPZ.mpz_t), pc, z)
 end
 
 function ppl_new_Coefficient_from_Coefficient(pc, c)
@@ -269,7 +269,7 @@ function ppl_new_Coefficient_from_Coefficient(pc, c)
 end
 
 function ppl_assign_Coefficient_from_mpz_t(dst, z)
-    ccall((:ppl_assign_Coefficient_from_mpz_t, libppl_c), Cint, (ppl_Coefficient_t, Cint), dst, z)
+    ccall((:ppl_assign_Coefficient_from_mpz_t, libppl_c), Cint, (ppl_Coefficient_t, Base.GMP.MPZ.mpz_t), dst, z)
 end
 
 function ppl_assign_Coefficient_from_Coefficient(dst, src)
