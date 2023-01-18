@@ -67,6 +67,18 @@ function test_H_C()
     end
     _call(PPL.ppl_delete_Coefficient, c)
 
+
+    cit = _get(PPL.ppl_Constraint_System_const_iterator_t, PPL.ppl_new_Constraint_System_const_iterator)
+    _call(PPL.ppl_Constraint_System_begin, cs, cit)
+    cit_end = _get(PPL.ppl_Constraint_System_const_iterator_t, PPL.ppl_new_Constraint_System_const_iterator)
+    _call(PPL.ppl_Constraint_System_end, cs, cit_end)
+    i = 0
+    while iszero(PPL.ppl_Constraint_System_const_iterator_equal_test(cit, cit_end))
+        i += 1
+        _call(PPL.ppl_Constraint_System_const_iterator_increment, cit)
+    end
+    @test i == 4
+
     _call(PPL.ppl_delete_Constraint_System, cs)
 
     #@test _get(PPL.ppl_Constraint_System_space_dimension, PPL.ppl_dimension_type, cs) == 4 # FIXME the first call returns garbage
@@ -79,6 +91,8 @@ function test_H_Polyhedra()
     h = Polyhedra.MixedMatHRep(coef[:, 1:end-1], coef[:, end], BitSet())
     cs = convert(ParmaPolyhedra.ConstraintSystem, h)
     @test Polyhedra.fulldim(cs) == 4
+    @test Polyhedra.nhalfspaces(cs) == 4
+    @test Polyhedra.nhyperplanes(cs) == 0
 end
 
 @testset "H-rep" begin

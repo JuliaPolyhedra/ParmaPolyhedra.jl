@@ -1,9 +1,55 @@
-struct ConstraintSystem <: Polyhedra.HRepresentation{Rational{BigInt}}
+struct ConstraintSystem <: Polyhedra.MixedHRep{Rational{BigInt}}
     data::PPL.ppl_Constraint_System_t
 end
 
 function Polyhedra.FullDim(cs::ConstraintSystem)
     return ppl_get(PPL.ppl_dimension_type, PPL.ppl_Constraint_System_space_dimension, cs.data)
+end
+
+Polyhedra.hvectortype(::Type{ConstraintSystem}) = Vector{Rational{BigInt}}
+
+struct ConstraintSystemIndex{T,ElemT}
+    iterator::PPL.ppl_Constraint_System_const_iterator_t
+end
+# FIXME add finalizer to free iterator
+
+# TODO We could get rid of these ones if Polyhedra had an `AbstractIndex`
+Polyhedra.undouble_it(idx) = idx[1]
+Polyhedra.double_it(idx::ConstraintSystemIndex) = idx, idx
+function Base.iterate(idxs::Polyhedra.Indices, idx::ConstraintSystemIndex)
+    return Polyhedra.double_it(Polyhedra.nextindex(idxs.rep, idx))
+end
+
+# Different than Polyhedra.mixednext since we do not start by skipping `it`
+function _mixed_next!(cs::ConstraintSystem, idx::ConstraintSystemIndex{T,ElemT}) where {T,ElemT}
+    while !Polyhedra.done(Polyhedra.Indices{T,ElemT}(cs), idx) && !isvalid(cs, idx)
+        ppl(PPL.ppl_Constraint_System_const_iterator_increment, idx.iterator)
+    end
+    if Polyhedra.done(Polyhedra.Indices{T,ElemT}(cs), idx)
+        return nothing
+    else
+        return idx
+    end
+end
+function Polyhedra.startindex(indices::Polyhedra.Indices{T,ElemT,<:ConstraintSystem}) where {T,ElemT}
+    it = ppl_new(PPL.ppl_Constraint_System_const_iterator_t, PPL.ppl_new_Constraint_System_const_iterator, )
+    ppl(PPL.ppl_Constraint_System_begin, indices.rep.data, it)
+    idx = ConstraintSystemIndex{T,ElemT}(it)
+    return _mixed_next!(indices.rep, idx)
+end
+function Polyhedra.nextindex(cs::ConstraintSystem, idx::ConstraintSystemIndex)
+    ppl(PPL.ppl_Constraint_System_const_iterator_increment, idx.iterator)
+    return _mixed_next!(cs, idx)
+end
+
+function Base.isvalid(cs::ConstraintSystem, idx::ConstraintSystemIndex{T,ElemT}) where {T,ElemT}
+    pc = ppl_get(PPL.ppl_const_Constraint_t, PPL.ppl_Constraint_System_const_iterator_dereference, idx.iterator)
+    return (PPL.ppl_Constraint_type(pc) == PPL.PPL_CONSTRAINT_TYPE_EQUAL) == Polyhedra.islin(ElemT)
+end
+function Polyhedra.done(cs::Polyhedra.HIndices, idx::ConstraintSystemIndex)
+    it_end = ppl_new(PPL.ppl_Constraint_System_const_iterator_t, PPL.ppl_new_Constraint_System_const_iterator)
+    ppl(PPL.ppl_Constraint_System_end, cs.rep.data, it_end)
+    return !iszero(PPL.ppl_Constraint_System_const_iterator_equal_test(idx.iterator, it_end))
 end
 
 function add_element!(cs::ConstraintSystem, h::Polyhedra.HalfSpace)
