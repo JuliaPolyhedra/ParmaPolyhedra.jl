@@ -1,59 +1,87 @@
 using Test
+import ParmaPolyhedra
 import ParmaPolyhedra: PPL
+import Polyhedra
 
 @test PPL.ppl_version_major() isa Integer
 
-function test_H()
-    coef = [
-        2  3  0  0 -8
-        4 -1  0  0 -4
-        0 -1  0  1  0
-       -1  0  1  0  0
-    ]
-
-    cs = Ref{PPL.ppl_Constraint_System_t}(C_NULL)
-    err = PPL.ppl_new_Constraint_System(cs)
-    @test cs[] != C_NULL
+function _get(f::Function, R, args...)
+    ret = Ref{R}(0)
+    err = f(args..., ret)
     @test iszero(err)
+    return ret[]
+end
 
-    c = Ref{PPL.ppl_Coefficient_t}(C_NULL)
-    err = PPL.ppl_new_Coefficient_from_mpz_t(c, 0)
-    @test c[] != C_NULL
+function _get(R, f::Function, args...)
+    ret = Ref{R}(0)
+    err = f(ret, args...)
     @test iszero(err)
+    return ret[]
+end
+
+function _call(f, args...)
+    err = f(args...)
+    @test iszero(err)
+    return
+end
+
+coef = [
+    2  3  0  0 -8
+    4 -1  0  0 -4
+    0 -1  0  1  0
+    -1  0  1  0  0
+]
+
+function test_H_C()
+    cs = _get(PPL.ppl_Constraint_System_t, PPL.ppl_new_Constraint_System)
+    @test cs != C_NULL
+
+    c = _get(PPL.ppl_Coefficient_t, PPL.ppl_new_Coefficient)
+    @test c != C_NULL
 
     for i in axes(coef, 1)
-        le = Ref{PPL.ppl_Linear_Expression_t}(C_NULL)
-        err = PPL.ppl_new_Linear_Expression(le);
-        @test iszero(err)
-        @test le[] != C_NULL
+        le = _get(PPL.ppl_Linear_Expression_t, PPL.ppl_new_Linear_Expression)
+        @test le != C_NULL
 
+        @test _get(PPL.ppl_Linear_Expression_space_dimension, PPL.ppl_dimension_type, le) == 0
         for j in axes(coef, 2)
-            err = PPL.ppl_assign_Coefficient_from_mpz_t(c[], big(coef[i, j]))
-            @test iszero(err)
+            _call(PPL.ppl_assign_Coefficient_from_mpz_t, c, big(coef[i, j]))
             if j == last(axes(coef, 2))
-                PPL.ppl_Linear_Expression_add_to_inhomogeneous(le[], c[]) # FIXME Segfault
+                _call(PPL.ppl_Linear_Expression_add_to_inhomogeneous, le, c)
             else
-                PPL.ppl_Linear_Expression_add_to_coefficient(le[], j, c[]) # FIXME Segfault
+                @test _get(PPL.ppl_Linear_Expression_space_dimension, PPL.ppl_dimension_type, le) == j - 1
+                _call(PPL.ppl_Linear_Expression_add_to_coefficient, le, j - 1, c)
+                @test _get(PPL.ppl_Linear_Expression_space_dimension, PPL.ppl_dimension_type, le) == j
             end
         end
+        @test _get(PPL.ppl_Linear_Expression_space_dimension, PPL.ppl_dimension_type, le) == 4
+        _call(PPL.ppl_io_print_Linear_Expression, le)
+        _call(PPL.ppl_Linear_Expression_all_homogeneous_terms_are_zero, le)
 
-        ct = Ref{PPL.ppl_Constraint_t}(C_NULL)
-        err = PPL.ppl_new_Constraint(ct, le[], PPL.PPL_CONSTRAINT_TYPE_GREATER_OR_EQUAL)
-        @test iszero(err)
-        err = PPL.ppl_Constraint_System_insert_Constraint(cs[], ct[])
-        @test iszero(err)
-        err = PPL.ppl_delete_Constraint(ct[])
-        @test iszero(err)
-        err = PPL.ppl_delete_Linear_Expression(le[])
-        @test iszero(err)
+        ct = _get(PPL.ppl_Constraint_t, PPL.ppl_new_Constraint, le, PPL.PPL_CONSTRAINT_TYPE_GREATER_OR_EQUAL)
+        @test ct != C_NULL
+        _call(PPL.ppl_io_print_Constraint, le)
+        _call(PPL.ppl_Constraint_System_insert_Constraint, cs, ct)
+        _call(PPL.ppl_delete_Constraint, ct)
+        _call(PPL.ppl_delete_Linear_Expression, le)
     end
-    err = PPL.ppl_delete_Coefficient(c[])
-    @test iszero(err)
+    _call(PPL.ppl_delete_Coefficient, c)
 
-    err = PPL.ppl_delete_Constraint_System(cs[])
-    @test iszero(err)
+    _call(PPL.ppl_delete_Constraint_System, cs)
+
+    #@test _get(PPL.ppl_Constraint_System_space_dimension, PPL.ppl_dimension_type, cs) == 4 # FIXME the first call returns garbage
+
+    #err = PPL.ppl_io_print_Constraint_System(cs) # FIXME Segfault
+    #@test iszero(err)
+end
+
+function test_H_Polyhedra()
+    h = Polyhedra.MixedMatHRep(coef[:, 1:end-1], coef[:, end], BitSet())
+    cs = convert(ParmaPolyhedra.ConstraintSystem, h)
+    @test Polyhedra.fulldim(cs) == 4
 end
 
 @testset "H-rep" begin
-    test_H()
+    test_H_C()
+    test_H_Polyhedra()
 end
