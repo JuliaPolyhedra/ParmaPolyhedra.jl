@@ -281,7 +281,7 @@ function ppl_delete_Coefficient(c)
 end
 
 function ppl_Coefficient_to_mpz_t(c, z)
-    ccall((:ppl_Coefficient_to_mpz_t, libppl_c), Cint, (ppl_const_Coefficient_t, Cint), c, z)
+    ccall((:ppl_Coefficient_to_mpz_t, libppl_c), Cint, (ppl_const_Coefficient_t, Base.GMP.MPZ.mpz_t), c, z)
 end
 
 function ppl_Coefficient_OK(c)
