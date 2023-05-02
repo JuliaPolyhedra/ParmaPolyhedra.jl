@@ -40,6 +40,11 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
+      - name: Polyhedra#master
+        shell: julia --project=@. {0}
+        run: |
+          using Pkg
+          Pkg.add(PackageSpec(name="Polyhedra", rev="bl/abstract_index"))
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         with:
