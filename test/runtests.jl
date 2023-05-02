@@ -25,14 +25,7 @@ function _call(f, args...)
     return
 end
 
-coef = [
-    2  3  0  0 -8
-    4 -1  0  0 -4
-    0 -1  0  1  0
-    -1  0  1  0  0
-]
-
-function test_H_C()
+function _test_H_C(coef)
     cs = _get(PPL.ppl_Constraint_System_t, PPL.ppl_new_Constraint_System)
     @test cs != C_NULL
 
@@ -81,21 +74,39 @@ function test_H_C()
 
     _call(PPL.ppl_delete_Constraint_System, cs)
 
-    #@test _get(PPL.ppl_Constraint_System_space_dimension, PPL.ppl_dimension_type, cs) == 4 # FIXME the first call returns garbage
+    #@test _get(PPL.ppl_Constraint_System_space_dimension, PPL.ppl_dimension_type, cs) == 4 # FIXME the first time this is called, it returns garbage
 
     #err = PPL.ppl_io_print_Constraint_System(cs) # FIXME Segfault
     #@test iszero(err)
 end
 
-function test_H_Polyhedra()
-    h = Polyhedra.MixedMatHRep(coef[:, 1:end-1], coef[:, end], BitSet())
-    cs = convert(ParmaPolyhedra.ConstraintSystem, h)
-    @test Polyhedra.fulldim(cs) == 4
-    @test Polyhedra.nhalfspaces(cs) == 4
-    @test Polyhedra.nhyperplanes(cs) == 0
+function _test_H_Polyhedra(coef)
+    # Equalities are reordered so that equalities are first
+    for linset in [BitSet(), BitSet(1:1), BitSet(1:2)]
+        h = Polyhedra.MixedMatHRep(coef[:, 1:end-1], coef[:, end], linset)
+        cs = convert(ParmaPolyhedra.ConstraintSystem, h)
+        @test cs isa ParmaPolyhedra.ConstraintSystem
+        @test Polyhedra.fulldim(cs) == size(coef, 2) - 1
+        @test Polyhedra.nhalfspaces(cs) == size(coef, 1) - length(linset)
+        @test Polyhedra.nhyperplanes(cs) == length(linset)
+        h2 = convert(typeof(h), cs)
+        @test h.A == h2.A
+        @test h.b == h2.b
+        @test h.linset == h2.linset
+    end
+end
+
+function test_H()
+    coef = [
+        2  3  0  0 -8
+        4 -1  0  0 -4
+        0 -1  0  1  0
+        -1  0  1  0  0
+    ]
+    _test_H_C(coef)
+    _test_H_Polyhedra(coef)
 end
 
 @testset "H-rep" begin
-    test_H_C()
-    test_H_Polyhedra()
+    test_H()
 end
